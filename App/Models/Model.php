@@ -10,7 +10,7 @@ class Model
     {
         $db = Db::unique();
         $sql = 'SELECT * FROM ' . $endpoint;
-        return $db->query($sql, []);
+        return $db->getAll($sql, []);
     }
 
 
@@ -18,39 +18,28 @@ class Model
     {
         $db = Db::unique();
         $sql = 'SELECT * FROM ' . $endpoint . ' WHERE id=:id';
-        $res = $db->query($sql, [':id' => $id]);
-        if ((bool)$res) {
-            return $res;
-        } else {
-            $err = ErrorHandler::unique();
-            $errors = [
-                "message" => "Not found",
-                "field" => $id
-            ];
-            return $err->handler(404, $errors);
-        }
+        $res = $db->getOne($sql, [':id' => $id]);
+
+        return $res;
+    }
+
+    public static function getLastHandled($endpoint)
+    {
+        $db = Db::unique();
+        $id = $db->getLastId();
+        $sql = 'SELECT * FROM ' . $endpoint . ' WHERE id=:id';
+        $res = $db->getOne($sql, [':id' => $id]);
+
+        return $res;
     }
 
     public static function search($endpoint, $req)
     {
-
         $field = $req['field'];
         $value = $req['value'];
         $db = Db::unique();
         $sql = 'SELECT * FROM ' . $endpoint . ' WHERE ' . $field . '=:' . $field;
-        $res = $db->query($sql, [':' . $field => $value]);
-
-        // if (!!$res) {
-        //     $err = ErrorHandler::unique();
-        //     $errors = [
-        //         "message" => "Not found",
-        //         "field" => $field,
-        //         "value" => $value
-        //     ];
-        //     $res = $err->handler(404, $errors);
-        // }
-
-        // var_dump($res);
+        $res = $db->getOne($sql, [':' . $field => $value]);
         return $res;
     }
 
@@ -68,52 +57,36 @@ class Model
 
         $db = Db::unique();
         $res = $db->execute($sql, $values);
-
-        if ($res) {
-            $res = self::getOne($endpoint, $db->getLastId());
-        }
         return $res;
     }
 
-    // public function update()
-    // {
-    //     if ($this->isNew()) {
-    //         return;
-    //     }
-    //     $id = $this->id;
-    //     $values = [];
-    //     $setParams = '';
-    //     foreach ($this as $key => $value) {
-    //         if ('id' == $key) {
-    //             continue;
-    //         }
-    //         $setParams .= $key . '=:' . $key . ', ';
-    //         $values[':' . $key] = $value;
-    //     }
-    //     $setParams = trim($setParams, ', ');
-    //     $sql = 'UPDATE ' . static::TABLE . ' SET ' . $setParams . '  WHERE id=' . $id;
+    public static function update($endpoint, $req)
+    {
+        $id = $req['id'];
+        $values = [];
+        $setParams = '';
+        foreach ($req as $key => $value) {
+            if ('id' == $key) {
+                continue;
+            }
+            $setParams .= $key . '=:' . $key . ', ';
+            $values[':' . $key] = $value;
+        }
+        $setParams = trim($setParams, ', ');
+        $sql = 'UPDATE ' . $endpoint . ' SET ' . $setParams . '  WHERE id=' . $id;
 
-    //     $db = Db::unique();
-    //     $ret = $db->execute($sql, $values);
-    //     return $ret;
-    // }
+        $db = Db::unique();
+        $ret = $db->execute($sql, $values);
+        return $ret;
+    }
 
-    // public function save()
-    // {
-    //     if (!$this->isNew()) {
-    //         $ret = $this->update();
-    //         echo 'update';
-    //     } else {
-    //         $ret = $this->insert();
-    //         echo 'insert';
-    //     }
-    //     return $ret;
-    // }
-    // public static function delete($id)
-    // {
-    //     $sql = 'DELETE FROM ' . static::TABLE . ' WHERE id=' . $id;
-    //     $db = Db::unique();
-    //     $db->query($sql, [], static::class);
-    //     return 'Deleted!';
-    // }
+    public static function delete($endpoint, $id)
+    {
+        $sql = 'DELETE FROM ' . $endpoint . ' WHERE id=' . $id;
+        $db = Db::unique();
+        $ret = $db->execute($sql, []);
+        // $db->getAll($sql, [], static::class);
+        // return 'Deleted!';
+        return $ret;
+    }
 }

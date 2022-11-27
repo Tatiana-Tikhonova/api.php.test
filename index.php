@@ -9,19 +9,17 @@ header('Content-Type: application/json');
 
 require __DIR__ . '/autoload.php';
 
-
 use App\Models\ErrorHandler;
-use App\Controllers\Controller;
-
+use App\Controller;
+use App\MyException;
 
 $err = ErrorHandler::unique();
 
 if (0 === strlen($_SERVER['QUERY_STRING'])) {
 
     $errors = [
-        "message" => "Incorrect endpoint"
+        'message' => 'Incorrect endpoint'
     ];
-
     echo \json_encode($err->handler(403, $errors));
     die;
 }
@@ -36,18 +34,38 @@ if ('POST' === $_SERVER['REQUEST_METHOD']) {
     $data = $_POST;
 }
 if ('PUT' === $_SERVER['REQUEST_METHOD']) {
-    parse_str(file_get_contents("php://input"), $data);
+    $data = \json_decode(file_get_contents('php://input'), true);
 }
 
 $allowedEndpoints = ['posts', 'users'];
 
 if (in_array($endpoint, $allowedEndpoints)) {
-    new Controller($endpoint, $method, $id, $data);
+    try {
+        new Controller($endpoint, $method, $id, $data);
+    } catch (MyException $e) {
+        $msg = $e->getMessage();
+        if ('Not found' == $msg) {
+            $error = [
+                'message' => 'Not found'
+            ];
+            echo \json_encode($err->handler(404, $error));
+        } elseif ('User already exists' == $msg) {
+            $error = [
+                'message' => 'User already exists'
+            ];
+            echo \json_encode($err->handler(400, $error));
+        } else {
+            $error = [
+                'message' => 'Server error'
+            ];
+            echo \json_encode($err->handler(500, $error));
+        }
+    }
 } else {
-    $errors = [
-        "message" => "Incorrect endpoint",
-        "field" => $endpoint
+    $error = [
+        'message' => 'Incorrect endpoint',
+        'field' => $endpoint
     ];
 
-    echo \json_encode($err->handler(404, $errors));
+    echo \json_encode($err->handler(404, $error));
 }
